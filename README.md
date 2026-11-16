@@ -4,8 +4,8 @@
 
 | 系統 | 網址 | 使用者 |
 |---|---|---|
-| 受試者版 | https://sw9526.github.io/College-Student-Research-Scholarship-NSTC/ | 參與研究的大學生 |
-| 管理者版 | https://sw9526.github.io/College-Student-Research-Scholarship-NSTC/admin.html | 研究者（需管理密碼） |
+| 受試者版 | https://ntnu-pols-capstone.github.io/Online-Testing-System/ | 參與研究的大學生 |
+| 管理者版 | https://ntnu-pols-capstone.github.io/Online-Testing-System/admin.html | 研究者（需管理密碼） |
 
 ---
 
