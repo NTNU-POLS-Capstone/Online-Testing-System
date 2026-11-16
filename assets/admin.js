@@ -197,9 +197,19 @@ function renderEditor() {
     <label class="f"><span>來源說明</span><input type="text" id="f_source" value="${esc(set.source)}" placeholder="例：114學年度學測國文 第21–22題"></label>
     <label class="check"><input type="checkbox" id="f_keep" ${set.keep_breaks ? "checked" : ""}> 保留換行（新詩、古詩等需要照原本分行的文章）</label>
     <label class="f"><span>文章</span><textarea id="f_passage" rows="12">${esc(passageToText(set.passage))}</textarea>
-      <span class="hint">段落之間空一行。沒勾「保留換行」時，從 PDF 貼上的段落內換行會自動合併。<br>
-      標記：<code>__文字__</code> 底線、<code>**文字**</code> 粗體、段落開頭 <code>【甲】</code> 多文本標籤、段落開頭 <code>注：</code> 注釋、
-      每行以 <code>|</code> 開頭為表格（<code>| 格 | 格 |</code>，格子開頭加 <code>!</code> 為標題格）、圖片用下方按鈕插入。題幹與選項也可以用底線、粗體；題幹或選項中引用文章的字詞用 <code>~~文字~~</code> 顯示為標楷體（和試題本一樣）。</span></label>
+      <span class="hint">段落之間空一行；沒勾「保留換行」時，從 PDF 貼上的段落內換行會自動合併。</span></label>
+    <table class="marks">
+      <thead><tr><th>寫法</th><th>效果</th><th>可用在</th></tr></thead>
+      <tbody>
+        <tr><td><code>__文字__</code></td><td>底線</td><td>文章、題幹、選項</td></tr>
+        <tr><td><code>**文字**</code></td><td>粗體</td><td>文章、題幹、選項</td></tr>
+        <tr><td><code>~~文字~~</code></td><td>標楷體（引用文章的字詞，同試題本）</td><td>題幹、選項</td></tr>
+        <tr><td><code>【甲】</code></td><td>多文本標籤</td><td>文章段落開頭</td></tr>
+        <tr><td><code>注：</code></td><td>注釋（小字）</td><td>文章段落開頭</td></tr>
+        <tr><td><code>| 格 | 格 |</code></td><td>表格；格子開頭加 <code>!</code> 為標題格</td><td>文章（每行以 <code>|</code> 開頭）</td></tr>
+        <tr><td>圖片</td><td>用下方「插入圖片」按鈕</td><td>文章</td></tr>
+      </tbody>
+    </table>
     <div class="actions"><label class="btn ghost small"><input type="file" id="f_img" accept="image/*" hidden>插入圖片</label>
       <span class="hint">圖片會縮到最寬 1200px 後存進試算表，並在文章游標處插入 <code>![圖說](img:代號)</code>。</span></div>
     <div id="itemEds" style="display:grid;gap:10px"></div>

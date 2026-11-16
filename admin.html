@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=LXGW+WenKai+TC&display=swap">
-<link rel="stylesheet" href="assets/common.css?v=20261110c">
+<link rel="stylesheet" href="assets/common.css?v=20261116a">
 <style>
 body{padding-block:0 48px}
 .adminbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
@@ -42,6 +42,12 @@ body{padding-block:0 48px}
 .form label.f > span{font-weight:500;color:var(--ink)}
 .check{display:flex;gap:6px;align-items:center;font-size:.9rem}
 .hint{font-size:.8rem;color:var(--muted)}
+/* 文章欄下方的標記說明表 */
+.marks{border-collapse:collapse;font-size:.8rem;color:var(--muted);width:100%;margin-top:-6px}
+.marks th,.marks td{text-align:left;padding:2px 8px 2px 0;border-bottom:1px solid var(--line);vertical-align:top;white-space:normal;background:none;letter-spacing:0;font-size:inherit}
+.marks th{font-weight:500;color:var(--ink)}
+.marks td:first-child{white-space:nowrap}
+.marks tr:last-child td{border-bottom:0}
 .itemed{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px}
 .itemed header{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .itemed header b{margin-right:auto}
@@ -148,10 +154,10 @@ details.sec[open]>summary{margin-bottom:8px}
   <section id="view-data" class="data" hidden></section>
 </main>
 
-<script src="assets/config.js?v=20261110c"></script>
-<script src="assets/render.js?v=20261110c"></script>
-<script src="assets/texts.js?v=20261110c"></script>
-<script src="assets/api.js?v=20261110c"></script>
-<script src="assets/admin.js?v=20261110c"></script>
+<script src="assets/config.js?v=20261116a"></script>
+<script src="assets/render.js?v=20261116a"></script>
+<script src="assets/texts.js?v=20261116a"></script>
+<script src="assets/api.js?v=20261116a"></script>
+<script src="assets/admin.js?v=20261116a"></script>
 </body>
 </html>
