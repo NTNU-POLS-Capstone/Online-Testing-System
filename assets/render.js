@@ -62,9 +62,9 @@ function block(p, zone, images) {
       : `<p class="empty">（找不到圖片 ${esc(img[2])}）</p>`;
   }
   const lines = p.split("\n");
-  if (lines.every(l => l.trim().startsWith(">"))) {
+  if (lines.every(l => /^[>＞]/.test(l.trim()))) {
     return `<div class="boxed">${lines.map((l, i) => {
-      let t = l.trim().replace(/^>\s?/, "");
+      let t = l.trim().replace(/^[>＞]\s?/, "");
       const center = t.startsWith("^");
       if (center) t = t.slice(1).trim();
       return `<p class="hl-zone${center ? " center" : ""}">${chars(t, `${zone}b${i + 1}`)}</p>`;

@@ -61,8 +61,11 @@ async function loadAll(dataOnly) {
 const sorted = () => S.sets.map((s, i) => ({ s, i })).sort((a, b) => String(a.s.booklet).localeCompare(String(b.s.booklet)) || (a.s.order || 0) - (b.s.order || 0));
 const passageToText = p => (p || []).join("\n\n");
 const textToPassage = (t, keep) => t.replace(/\r/g, "").split(/\n\s*\n/).map(x => {
-  const lines = x.split("\n").map(l => l.trim()).filter(Boolean);
-  if (lines.length && (lines.every(l => l.startsWith("|")) || lines.every(l => l.startsWith(">")))) return lines.join("\n");   // 表格、框線一律保留換行
+  const lines = x.split("\n").map(l => l.trim().replace(/^＞/, ">")).filter(Boolean);
+  if (lines.length && lines.every(l => l.startsWith("|"))) return lines.join("\n");   // 表格一律保留換行
+  // 框線：第一行以 > 開頭的段落；沒有 > 的行（例如複製時被自動換行切開）接回上一行
+  if (lines.length && lines[0].startsWith(">"))
+    return lines.reduce((a, l) => (l.startsWith(">") ? a.push(l) : (a[a.length - 1] += l), a), []).join("\n");
   return keep ? lines.join("\n") : lines.join("");
 }).filter(Boolean);
 const nextItemId = set => { let n = 1; const ids = new Set(set.items.map(i => i.id)); while (ids.has("q" + n)) n++; return "q" + n; };
