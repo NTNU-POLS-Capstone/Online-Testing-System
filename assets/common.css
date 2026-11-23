@@ -112,6 +112,8 @@ mark.todo{background:var(--flag-soft);color:var(--warn);border-radius:3px;paddin
 .paper .passage p{text-indent:2em;margin:0}
 .paper .empty{color:#8a96a3;font-family:var(--f-ui);font-size:.85em;text-indent:0}
 .paper .passage p.verse{text-indent:0;padding-left:2em}
+.paper .boxed{border:1px solid #444;padding:.1em .6em;margin:.25em 0}
+.paper .passage .boxed p.center{text-indent:0;text-align:center}
 .paper .passage p.note{text-indent:0;font-size:.85em;margin-top:.3em}
 .paper .plabel{margin:.5em 0 .1em -1.67em}
 .paper .plabel .lab{display:inline-block;border:1px solid currentColor;padding:0 .25em;line-height:1.3}

@@ -8,6 +8,7 @@
      段落開頭【甲】   甲、乙、丙等多文本的標籤；只寫【甲】一行則標籤單獨成行
      段落開頭 注：    注釋，以小字顯示
      | 格 | 格 |    表格：段落的每一行都以 | 開頭；格子內容以 ! 開頭為標題格
+     > 文字          框線：段落的每一行都以 > 開頭，整段一個外框，每行一段（首行縮排）；以 >^ 開頭的行置中
      ![圖說](img:代號) 圖片（在管理者頁上傳），也可以是圖片網址
      段落內換行       題組勾選「保留換行」時保留（新詩、古詩）；表格一律保留 */
 const KEYS = ["A", "B", "C", "D"];
@@ -61,6 +62,14 @@ function block(p, zone, images) {
       : `<p class="empty">（找不到圖片 ${esc(img[2])}）</p>`;
   }
   const lines = p.split("\n");
+  if (lines.every(l => l.trim().startsWith(">"))) {
+    return `<div class="boxed">${lines.map((l, i) => {
+      let t = l.trim().replace(/^>\s?/, "");
+      const center = t.startsWith("^");
+      if (center) t = t.slice(1).trim();
+      return `<p class="hl-zone${center ? " center" : ""}">${chars(t, `${zone}b${i + 1}`)}</p>`;
+    }).join("")}</div>`;
+  }
   if (lines.every(l => l.trim().startsWith("|"))) {
     const rows = lines.map(l => l.trim().replace(/^\||\|$/g, "").split("|"));
     return `<table class="xt"><tbody>${rows.map((r, ri) => `<tr>${r.map((c, ci) => {

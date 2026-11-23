@@ -62,7 +62,7 @@ const sorted = () => S.sets.map((s, i) => ({ s, i })).sort((a, b) => String(a.s.
 const passageToText = p => (p || []).join("\n\n");
 const textToPassage = (t, keep) => t.replace(/\r/g, "").split(/\n\s*\n/).map(x => {
   const lines = x.split("\n").map(l => l.trim()).filter(Boolean);
-  if (lines.length && lines.every(l => l.startsWith("|"))) return lines.join("\n");   // 表格一律保留換行
+  if (lines.length && (lines.every(l => l.startsWith("|")) || lines.every(l => l.startsWith(">")))) return lines.join("\n");   // 表格、框線一律保留換行
   return keep ? lines.join("\n") : lines.join("");
 }).filter(Boolean);
 const nextItemId = set => { let n = 1; const ids = new Set(set.items.map(i => i.id)); while (ids.has("q" + n)) n++; return "q" + n; };
@@ -288,6 +288,7 @@ function renderEditor() {
         <tr><td><code>【甲】</code></td><td>多文本標籤</td><td>文章段落開頭</td></tr>
         <tr><td><code>注：</code></td><td>注釋（小字）</td><td>文章段落開頭</td></tr>
         <tr><td><code>| 格 | 格 |</code></td><td>表格；格子開頭加 <code>!</code> 為標題格</td><td>文章（每行以 <code>|</code> 開頭）</td></tr>
+        <tr><td><code>&gt; 文字</code></td><td>框線（整段一個外框，每行一段）；<code>&gt;^</code> 開頭的行置中</td><td>文章（每行以 <code>&gt;</code> 開頭）</td></tr>
         <tr><td>圖片</td><td>用下方「插入圖片」按鈕</td><td>文章</td></tr>
       </tbody>
     </table>
