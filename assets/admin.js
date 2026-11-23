@@ -83,14 +83,52 @@ function renderSetList() {
   const groups = {};
   sorted().forEach(({ s, i }) => (groups[s.booklet || "（未指定）"] ||= []).push({ s, i }));
   const order = Object.keys(groups).sort((a, b) => (a === PRACTICE_BOOKLET) - (b === PRACTICE_BOOKLET) || a.localeCompare(b));
+  // 練習題本與未指定題本不能改名或刪除；只剩一個題本時不能刪除（否則沒有東西可以儲存）
+  const editable = b => b !== PRACTICE_BOOKLET && b !== "（未指定）";
+  const head = b => S.renaming === b
+    ? `<div class="bkhead"><input type="text" class="bkname" value="${esc(b)}" maxlength="12" aria-label="題本名稱">
+        <button class="linkbtn" type="button" data-bk="ok">確定</button><button class="linkbtn" type="button" data-bk="cancel">取消</button></div>
+       <p class="hint bkmsg">已經有人作答的題本請不要改名，否則先前的資料會對不上新名稱。</p>`
+    : `<div class="bkhead"><h3>題本 ${esc(b)}</h3>${editable(b) ? `<span class="bkact">
+        <button class="linkbtn" type="button" data-bk="rename">改名</button>${order.filter(editable).length > 1 ? `<button class="linkbtn danger" type="button" data-bk="del">刪除</button>` : ""}</span>` : ""}</div>`;
   $("#setList").innerHTML = (order.length ? order.map(b => `
-    <div class="bk" data-booklet="${esc(b)}"><h3>題本 ${esc(b)}</h3><ul>
+    <div class="bk" data-booklet="${esc(b)}">${head(b)}<ul>
       ${groups[b].map(({ s, i }) => `<li draggable="true" data-i="${i}"><button class="setbtn" type="button" data-i="${i}" aria-current="${i === S.cur}">
         <span class="id"><span class="grip" aria-hidden="true">⋮⋮</span>${s.order || "–"}. ${esc(s.set_id || "（未命名）")}</span>
         <span class="meta">${(s.items || []).length} 題${s.active === false ? "・未啟用" : ""}</span></button></li>`).join("")}
     </ul></div>`).join("") : '<p class="muted">還沒有題組。</p>')
     + '<p class="hint">拖曳題組可以調整順序，或拖到其他題本。</p>';
   $("#setList").querySelectorAll(".setbtn").forEach(b => b.addEventListener("click", () => { S.cur = +b.dataset.i; renderEditor(); }));
+  // 題本改名、刪除（按「儲存全部變更」後才寫入試算表）
+  $("#setList").querySelectorAll("[data-bk]").forEach(btn => btn.addEventListener("click", () => {
+    const bk = btn.closest(".bk"), b = bk.dataset.booklet, act = btn.dataset.bk;
+    if (act === "rename") { S.renaming = b; renderSetList(); const inp = $("#setList .bkname"); inp.focus(); inp.select(); return; }
+    if (act === "cancel") { S.renaming = null; renderSetList(); return; }
+    if (act === "ok") {
+      const to = bk.querySelector(".bkname").value.trim().toUpperCase(), msg = bk.querySelector(".bkmsg");
+      const err = !to ? "請輸入題本名稱" : to === PRACTICE_BOOKLET ? `「${PRACTICE_BOOKLET}」保留給練習題組` : to !== b && booklets().includes(to) ? `已經有題本 ${to}` : "";
+      if (err) { msg.textContent = err; msg.classList.add("err"); return; }
+      S.renaming = null;
+      if (to !== b) { S.sets.forEach(s => { if (String(s.booklet) === b) s.booklet = to; }); markDirty(); }
+      renderEditor(); return;
+    }
+    if (act === "del") {
+      const n = S.sets.filter(s => String(s.booklet) === b).length;
+      if (btn.dataset.confirm !== "1") {
+        btn.dataset.confirm = "1"; btn.textContent = `確定刪除題本 ${b} 和其中 ${n} 個題組？再按一次`;
+        setTimeout(() => { if (btn.isConnected) { btn.dataset.confirm = ""; btn.textContent = "刪除"; } }, 4000);
+        return;
+      }
+      const cur = S.sets[S.cur];
+      S.sets = S.sets.filter(s => String(s.booklet) !== b);
+      S.cur = Math.max(0, S.sets.indexOf(cur));
+      markDirty(); renderEditor();
+    }
+  }));
+  $("#setList").querySelector(".bkname")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); $("#setList [data-bk=ok]").click(); }
+    if (e.key === "Escape") $("#setList [data-bk=cancel]").click();
+  });
   // 拖曳排序：放到某個題組上＝插在它前面（拖到下半部則插在後面）；放到題本空白處＝排到最後
   let dragI = null;
   $("#setList").querySelectorAll("li[draggable]").forEach(li => {
@@ -294,7 +332,8 @@ $("#addBooklet").addEventListener("click", () => {
   const used = new Set(booklets());
   let b = "A"; while (used.has(b)) b = String.fromCharCode(b.charCodeAt(0) + 1);
   S.sets.push({ set_id: "", booklet: b, order: 1, active: true, source: "", passage: [], items: [{ id: "q1", stem: "", options: ["", "", "", ""], answer: "" }] });
-  S.cur = S.sets.length - 1; markDirty(); renderEditor(); $("#f_set_id").focus();
+  S.cur = S.sets.length - 1; S.renaming = b; markDirty(); renderEditor();
+  const inp = $("#setList .bkname"); inp.focus(); inp.select();          // 新題本先命名（預設下一個字母，可直接按確定）
 });
 $("#addSet").addEventListener("click", () => {
   const b = S.sets[S.cur]?.booklet || "A";
