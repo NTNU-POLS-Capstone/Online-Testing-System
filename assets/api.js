@@ -136,7 +136,11 @@ const API = (() => {
     },
     async assign() {
       if (demo) {
-        const booklets = [...new Set(demoSets().filter(isFormal).map(s => s.booklet))].sort();
+        let booklets = [...new Set(demoSets().filter(isFormal).map(s => s.booklet))].sort();
+        // 與後端相同：只分派管理者勾選的題本（沒有設定＝全部）
+        let allow = null; try { allow = JSON.parse(LS.get(K.texts, {}).assign_booklets || "null"); } catch (e) {}
+        if (Array.isArray(allow)) booklets = booklets.filter(b => allow.map(String).includes(String(b)));
+        if (!booklets.length) throw new Error("沒有開放分派的題本");
         const sessions = LS.get(K.sessions, []);
         const count = b => sessions.filter(s => s.booklet === b).length;
         const min = Math.min(...booklets.map(count));

@@ -1,6 +1,6 @@
 /* 管理者版：題目編輯（即時預覽）＋頁面文字（即時預覽）＋收集資料（試題分析、受試者列表、CSV 下載） */
 const $ = s => document.querySelector(s);
-const S = { key: "", sets: [], images: {}, texts: {}, cur: 0, dirty: false, data: null };
+const S = { key: "", sets: [], images: {}, texts: {}, savedTexts: {}, renamedBk: {}, cur: 0, dirty: false, data: null };
 const YEARS = (APP_CONFIG.ITEM_YEARS || []).map(Number);
 const YEARS_TXT = textVars(APP_CONFIG).YEARS;
 const ss = {
@@ -51,6 +51,7 @@ async function loadAll(dataOnly) {
     S.sets = JSON.parse(JSON.stringify(all.sets || []));
     S.images = { ...(all.images || {}) };
     S.texts = { ...(all.texts || {}) };
+    S.savedTexts = { ...(all.texts || {}) };
     S.cur = Math.min(S.cur, Math.max(0, S.sets.length - 1));
     renderEditor();
   }
@@ -90,7 +91,8 @@ function renderSetList() {
         <button class="linkbtn" type="button" data-bk="ok">確定</button><button class="linkbtn" type="button" data-bk="cancel">取消</button></div>
        <p class="hint bkmsg">已經有人作答的題本請不要改名，否則先前的資料會對不上新名稱。</p>`
     : `<div class="bkhead"><h3>題本 ${esc(b)}</h3>${editable(b) ? `<span class="bkact">
-        <button class="linkbtn" type="button" data-bk="rename">改名</button>${order.filter(editable).length > 1 ? `<button class="linkbtn danger" type="button" data-bk="del">刪除</button>` : ""}</span>` : ""}</div>`;
+        <button class="linkbtn" type="button" data-bk="rename">改名</button>${order.filter(editable).length > 1 ? `<button class="linkbtn danger" type="button" data-bk="del">刪除</button>` : ""}</span>` : ""}</div>
+       ${editable(b) ? `<label class="check bkassign"><input type="checkbox" data-assign="${esc(b)}" ${isAssigned(b) ? "checked" : ""}> 分派給受試者</label>` : ""}`;
   $("#setList").innerHTML = (order.length ? order.map(b => `
     <div class="bk" data-booklet="${esc(b)}">${head(b)}<ul>
       ${groups[b].map(({ s, i }) => `<li draggable="true" data-i="${i}"><button class="setbtn" type="button" data-i="${i}" aria-current="${i === S.cur}">
@@ -109,7 +111,12 @@ function renderSetList() {
       const err = !to ? "請輸入題本名稱" : to === PRACTICE_BOOKLET ? `「${PRACTICE_BOOKLET}」保留給練習題組` : to !== b && booklets().includes(to) ? `已經有題本 ${to}` : "";
       if (err) { msg.textContent = err; msg.classList.add("err"); return; }
       S.renaming = null;
-      if (to !== b) { S.sets.forEach(s => { if (String(s.booklet) === b) s.booklet = to; }); markDirty(); }
+      if (to !== b) {
+        S.sets.forEach(s => { if (String(s.booklet) === b) s.booklet = to; });
+        Object.keys(S.renamedBk).forEach(k => { if (S.renamedBk[k] === b) S.renamedBk[k] = to; });
+        if (!Object.values(S.renamedBk).includes(to)) S.renamedBk[b] = to;   // 儲存題組後，分派設定跟著改名
+        markDirty();
+      }
       renderEditor(); return;
     }
     if (act === "del") {
@@ -125,6 +132,7 @@ function renderSetList() {
       markDirty(); renderEditor();
     }
   }));
+  $("#setList").querySelectorAll("[data-assign]").forEach(cb => cb.addEventListener("change", () => setAssign(cb.dataset.assign, cb.checked)));
   $("#setList").querySelector(".bkname")?.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); $("#setList [data-bk=ok]").click(); }
     if (e.key === "Escape") $("#setList [data-bk=cancel]").click();
@@ -168,6 +176,40 @@ function renderSetList() {
   });
   renderTestLinks();
 }
+/* 分派給受試者的題本：存在試算表「頁面文字」的 assign_booklets（JSON 陣列），後端分派題本時只從這些題本中選人數最少的。
+   沒有這個設定時，所有啟用中的題本都會分派。勾選後立即儲存（不需要按「儲存全部變更」），測試連結指定題本時不受影響 */
+const formalBooklets = () => booklets().filter(b => b !== PRACTICE_BOOKLET);
+function assignList() {
+  try { const v = JSON.parse(S.savedTexts.assign_booklets || "null"); return Array.isArray(v) ? v.map(String) : null; } catch (e) { return null; }
+}
+const isAssigned = b => { const l = assignList(); return !l || l.includes(String(b)); };
+async function saveAssign(list) {
+  const texts = { ...S.savedTexts, assign_booklets: JSON.stringify([...new Set(list)].sort()) };
+  await API.saveTexts(S.key, texts);
+  S.savedTexts = texts; S.texts.assign_booklets = texts.assign_booklets;
+}
+async function setAssign(b, on) {
+  const formal = formalBooklets();
+  let list = (assignList() || formal).filter(x => formal.includes(x));
+  list = on ? list.concat(b) : list.filter(x => x !== b);
+  const msg = $("#assignMsg");
+  if (!list.length) { msg.textContent = "至少要分派一個題本。"; msg.classList.add("err"); renderSetList(); return; }
+  msg.textContent = "儲存中…"; msg.classList.remove("err");
+  try {
+    await saveAssign(list);
+    msg.textContent = `已儲存：受試者會被分派到題本 ${[...new Set(list)].sort().join("、")}。`;
+  } catch (e) { msg.textContent = "分派設定儲存失敗：" + e.message; msg.classList.add("err"); }
+  renderSetList();
+}
+/* 儲存題組後：題本改名的，分派設定跟著改名 */
+async function syncAssign() {
+  const list = assignList(), ren = S.renamedBk;
+  S.renamedBk = {};
+  if (!list || !Object.keys(ren).length) return;
+  const next = list.map(b => ren[b] || b);
+  if (next.join() !== list.join()) { try { await saveAssign(next); } catch (e) {} renderSetList(); }
+}
+
 /* 以測試模式開啟受試者頁：不擋重複作答、資料標記為測試（不納入分析、不影響題本分派），可指定題本 */
 function renderTestLinks() {
   const box = $("#testLinks");
@@ -178,6 +220,7 @@ function renderTestLinks() {
   const formal = booklets().filter(b => b !== PRACTICE_BOOKLET);
   box.innerHTML = `<h3>測試受試者頁</h3>
     <p class="hint"><button class="linkbtn" type="button" id="clearDone">清除這台電腦的作答紀錄</button> <span id="clearDoneMsg"></span></p>
+    <p class="hint" id="assignMsg">受試者連結只會分派到上方勾選「分派給受試者」的題本（目前：${esc(formalBooklets().filter(isAssigned).join("、") || "無")}）。測試連結可以開啟任何題本。</p>
     <p class="hint">用這些連結開啟的受試者頁不會擋重複作答，作答資料會標記為「測試」，不納入分析。<b>不要把這些連結給受試者。</b></p>
     <div class="tools">${formal.map(b => `<a class="tool" href="${url(b)}" target="_blank" rel="noopener">題本 ${esc(b)}</a>`).join("")}</div>`;
   // 與受試者頁同網域，直接清除「已完成」紀錄（participant.js 的 DONE_KEY）；回到受試者頁重新整理即可
@@ -432,6 +475,7 @@ async function save() {
   try {
     await API.saveSets(S.key, S.sets, usedImages());
     markDirty(false);
+    await syncAssign();
   } catch (e) {
     $("#errors").innerHTML = `<div class="errors">儲存失敗：${esc(e.message)}。請確認網路連線後再試一次。</div>`;
   } finally { btn.disabled = false; btn.textContent = "儲存全部變更"; }
@@ -658,7 +702,7 @@ function renderTexts() {
     if ($("#qErrors")) $("#qErrors").innerHTML = errs.length ? `<div class="errors">背景問卷還不能儲存：<ul class="tight">${errs.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
     if (errs.length) { TS.page = "background"; if (pg.page !== "background") renderTexts(); return; }
     const btn = $("#saveTexts"); btn.disabled = true; btn.textContent = "儲存中…";
-    try { await API.saveTexts(S.key, S.texts); TS.dirty = false; renderTexts(); $("#textStatus").textContent = "已儲存"; $("#textStatus").className = "status saved"; }
+    try { await API.saveTexts(S.key, S.texts); S.savedTexts = { ...S.texts }; TS.dirty = false; renderTexts(); $("#textStatus").textContent = "已儲存"; $("#textStatus").className = "status saved"; }
     catch (e) { $("#textStatus").textContent = "儲存失敗：" + e.message; $("#textStatus").className = "status dirty"; btn.disabled = false; btn.textContent = "儲存頁面文字"; }
   });
   textPreview(pg.page);

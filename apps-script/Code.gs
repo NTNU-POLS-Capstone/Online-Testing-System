@@ -262,15 +262,26 @@ function doPost(e) {
   }
 }
 
-/* 題本分派：選目前已開始人數最少的題本，平手時隨機 */
+/* 題本分派：只從管理者勾選「分派給受試者」的題本（頁面文字 assign_booklets；沒有設定＝全部）中，
+   選目前已開始人數最少的題本，平手時隨機 */
 function assignBooklet() {
-  const booklets = [...new Set(readRows("Sets").filter(s => s.active !== false && s.active !== "FALSE" && String(s.booklet) !== PRACTICE_BOOKLET).map(s => String(s.booklet)))].sort();
+  let booklets = [...new Set(readRows("Sets").filter(s => s.active !== false && s.active !== "FALSE" && String(s.booklet) !== PRACTICE_BOOKLET).map(s => String(s.booklet)))].sort();
   if (!booklets.length) throw new Error("沒有啟用中的題組");
+  const allow = assignAllowed();
+  if (allow) booklets = booklets.filter(b => allow.indexOf(b) >= 0);
+  if (!booklets.length) throw new Error("沒有開放分派的題本");
   const sessions = readRows("Sessions").filter(s => s.is_test !== true && s.is_test !== "TRUE");   // 測試資料不影響分派
   const count = b => sessions.filter(s => String(s.booklet) === b).length;
   const min = Math.min.apply(null, booklets.map(count));
   const pool = booklets.filter(b => count(b) === min);
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function assignAllowed() {
+  try {
+    const v = JSON.parse(readTexts().assign_booklets || "null");
+    return Array.isArray(v) ? v.map(String) : null;
+  } catch (e) { return null; }
 }
 
 /* ---------- 工具函式 ---------- */
