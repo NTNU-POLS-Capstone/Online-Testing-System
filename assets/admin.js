@@ -342,6 +342,46 @@ $("#addSet").addEventListener("click", () => {
   S.cur = S.sets.length - 1; markDirty(); renderEditor(); $("#f_set_id").focus();
 });
 
+/* 題組檔（JSON）：匯出目前的題組作為備份；匯入時取代所有正式題組，練習題組若檔案裡沒有就保留原本的。
+   題組檔含正確答案，不要放進 GitHub。檔案格式與試算表「題目」相同：[{set_id, booklet, order, active, source, keep_breaks, passage: [段落], items: [{id, stem, options: [4], answer, layout}]}] */
+$("#exportSets").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S.sets, null, 1)], { type: "application/json" }));
+  a.download = `題組備份_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$("#importSets").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  const msg = $("#importMsg");
+  try {
+    const data = JSON.parse(await file.text());
+    const list = Array.isArray(data) ? data : data.sets;
+    if (!Array.isArray(list) || !list.length) throw new Error("檔案裡沒有題組");
+    const sets = list.map((s, k) => {
+      if (!s || !Array.isArray(s.items)) throw new Error(`第 ${k + 1} 個題組格式錯誤`);
+      return {
+        set_id: String(s.set_id || ""), booklet: String(s.booklet || ""), order: Number(s.order) || k + 1,
+        active: s.active !== false, source: String(s.source || ""), keep_breaks: !!s.keep_breaks,
+        passage: (Array.isArray(s.passage) ? s.passage : String(s.passage || "").split(/\n\s*\n/)).map(String).filter(p => p.trim()),
+        items: s.items.map((it, n) => ({
+          id: String(it.id || "q" + (n + 1)), stem: String(it.stem || ""),
+          options: KEYS.map((_, i) => String((it.options || [])[i] ?? "")), answer: String(it.answer || "").toUpperCase(), layout: String(it.layout || "auto")
+        }))
+      };
+    });
+    const hasPractice = sets.some(s => s.booklet === PRACTICE_BOOKLET);
+    S.sets = sets.concat(hasPractice ? [] : S.sets.filter(s => String(s.booklet) === PRACTICE_BOOKLET));
+    booklets().forEach(renumber);
+    S.cur = 0; markDirty(); renderEditor();
+    const errs = validate();
+    msg.textContent = `已載入 ${sets.length} 個題組（${[...new Set(sets.map(s => s.booklet))].join("、")}）。請檢查預覽，再按「儲存全部變更」寫入試算表。` + (errs.length ? `有 ${errs.length} 個問題需要先修正。` : "");
+    msg.classList.toggle("err", errs.length > 0);
+  } catch (err) {
+    msg.textContent = "無法匯入：" + (err.message || err); msg.classList.add("err");
+  }
+});
+
 /* 上傳的圖片縮到最寬 1200px，存成 data URL（PNG 較清楚；太大時改用 JPEG） */
 function shrinkImage(file) {
   return new Promise((resolve, reject) => {

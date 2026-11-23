@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=LXGW+WenKai+TC&display=swap">
-<link rel="stylesheet" href="assets/common.css?v=20261123a">
+<link rel="stylesheet" href="assets/common.css?v=20261123b">
 <style>
 body{padding-block:0 48px}
 .adminbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
@@ -145,6 +145,9 @@ details.sec[open]>summary{margin-bottom:8px}
         <div id="setList"></div>
         <div class="actions"><button class="btn ghost small" id="addSet" type="button">新增題組</button>
           <button class="btn ghost small" id="addBooklet" type="button">新增題本</button></div>
+        <div class="actions"><label class="btn ghost small"><input type="file" id="importSets" accept=".json,application/json" hidden>匯入題組檔</label>
+          <button class="btn ghost small" id="exportSets" type="button">匯出題組檔</button></div>
+        <p class="hint" id="importMsg">匯入會取代目前所有正式題組（練習題組保留），按「儲存全部變更」後才寫入試算表。</p>
         <div id="testLinks" class="testlinks"></div>
       </aside>
       <div class="form" id="form"></div>
@@ -160,10 +163,10 @@ details.sec[open]>summary{margin-bottom:8px}
   <section id="view-data" class="data" hidden></section>
 </main>
 
-<script src="assets/config.js?v=20261123a"></script>
-<script src="assets/render.js?v=20261123a"></script>
-<script src="assets/texts.js?v=20261123a"></script>
-<script src="assets/api.js?v=20261123a"></script>
-<script src="assets/admin.js?v=20261123a"></script>
+<script src="assets/config.js?v=20261123b"></script>
+<script src="assets/render.js?v=20261123b"></script>
+<script src="assets/texts.js?v=20261123b"></script>
+<script src="assets/api.js?v=20261123b"></script>
+<script src="assets/admin.js?v=20261123b"></script>
 </body>
 </html>
