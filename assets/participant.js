@@ -4,10 +4,19 @@
   const CFG = window.APP_CONFIG;
   const app = document.getElementById("app");
   const SS_KEY = "nstc_progress", DONE_KEY = "nstc_done";
+  // 作答進度存在 localStorage：關掉分頁或瀏覽器、重新開機後再開網址都能接續（同一個瀏覽器）。
+  // 測試模式用另一個 key，研究團隊在同一台電腦開測試連結不會蓋掉受試者的進度。
+  // 舊版存在 sessionStorage，讀不到時退回去讀，上線當下正在作答的人不受影響。
+  let ssKey = SS_KEY;
   const ss = {
-    get() { try { return JSON.parse(sessionStorage.getItem(SS_KEY) || "null"); } catch (e) { return null; } },
-    set(v) { try { sessionStorage.setItem(SS_KEY, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { sessionStorage.removeItem(SS_KEY); } catch (e) {} }
+    get() {
+      for (const st of ["localStorage", "sessionStorage"]) {
+        try { const v = window[st].getItem(ssKey); if (v) return JSON.parse(v); } catch (e) {}
+      }
+      return null;
+    },
+    set(v) { const t = JSON.stringify(v); try { localStorage.setItem(ssKey, t); } catch (e) { try { sessionStorage.setItem(ssKey, t); } catch (e2) {} } },
+    clear() { [localStorage, sessionStorage].forEach(st => { try { st.removeItem(ssKey); } catch (e) {} }); }
   };
   // 「已完成」紀錄：{ at, pid }。舊版只存時間字串（沒有 pid，無法查詢，視為已完成）
   const done = {
@@ -56,8 +65,9 @@
   const qs = new URLSearchParams(location.search);
   const TEST = !!CFG.TEST_KEY && qs.get("test") === CFG.TEST_KEY;
   const testBooklet = TEST ? qs.get("booklet") : null;
+  if (TEST) ssKey = SS_KEY + "_test";
   // ?reset=TEST_KEY：清除這台電腦的「已完成」紀錄與進度，回到一般的受試者網址（研究團隊用）
-  if (CFG.TEST_KEY && qs.get("reset") === CFG.TEST_KEY) { done.clear(); ss.clear(); location.replace(location.pathname); return; }
+  if (CFG.TEST_KEY && qs.get("reset") === CFG.TEST_KEY) { done.clear(); ss.clear(); ssKey = SS_KEY + "_test"; ss.clear(); location.replace(location.pathname); return; }
   if (TEST) {
     const bar = document.createElement("div");
     bar.className = "testbar";
@@ -75,7 +85,7 @@
     return;
   }
 
-  /* ---------- 作答狀態（存在 sessionStorage，重新整理後接續）----------
+  /* ---------- 作答狀態（存在 localStorage，重新整理或關掉瀏覽器後都能接續）----------
      store：每個題組的作答、畫記、離開紀錄與累計時間。時間一律是「停留在該題組的累計時間」：
      rt_ms＝停留時間總和；log 裡的 t、離開的 at_ms 都以累計時間計。 */
   let S = ss.get();
@@ -418,6 +428,17 @@
     S.nReloads = (S.nReloads || 0) + 1;
     drawSteps();
     show(PAGE_HTML.resume(T, V));
+    // 共用電腦：前一位沒做完就離開時，下一位可以放棄這份進度、從頭開始（前一位的資料留在試算表，狀態是未完成）
+    const restart = app.querySelector("[data-restart]");
+    let armed = null;
+    restart.addEventListener("click", () => {
+      if (!armed) {
+        restart.textContent = "確定放棄剛才的作答、從頭開始？再按一次";
+        armed = setTimeout(() => { armed = null; restart.textContent = "不是你開始的作答？從頭開始"; }, 4000);
+        return;
+      }
+      ss.clear(); S = null; location.reload();
+    });
     await nextClick("[data-next]");
     if (testing()) goFullscreen();
     if (S.visit) {

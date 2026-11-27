@@ -83,7 +83,7 @@ const TEXT_PAGES = [
 這台電腦已經完成過作答，每個人只需要參加一次。謝謝你的參與！` },
     { key: "resume", label: "重新整理後接續作答", rows: 3, def:
 `## 繼續作答
-頁面剛才被重新整理或中斷。按下「繼續作答」會回到剛才的地方，已作答的內容都還在。` },
+上次的作答還沒完成。按下「繼續作答」會回到剛才的地方，已作答的內容都還在。` },
     { key: "fullscreen_bar", label: "退出全螢幕時的提示列", rows: 1, def: "你已離開全螢幕。按這裡回到全螢幕作答。" },
     { key: "leave_warning", label: "離開頁面前的提醒（部分瀏覽器不顯示自訂文字）", rows: 1, def: "作答尚未完成，確定要離開嗎？" }] }
 ];
@@ -168,7 +168,7 @@ const PAGE_HTML = {
       ${cfg.REWARD_FORM_URL ? `<p>${renderTextInline(T.reward, V)}<br><a href="${esc(cfg.REWARD_FORM_URL)}" target="_blank" rel="noopener">酬謝領取表單</a></p>` : ""}
       ${V.DEMO ? '<p class="muted">示範模式：資料存在這台電腦的瀏覽器，可到 <a href="admin.html">管理者頁</a>（密碼 demo）查看。</p>' : ""}</div>`,
   already_done: (T, V) => `<div class="panel">${renderText(T.already_done, V)}${V.DEMO ? '<p class="muted">示範模式：<button class="btn ghost small" type="button" data-reset>清除這台電腦的作答紀錄</button></p>' : ""}</div>`,
-  resume: (T, V) => `<div class="stack"><div class="panel">${renderText(T.resume, V)}</div><button class="btn center" type="button" data-next>繼續作答</button></div>`
+  resume: (T, V) => `<div class="stack"><div class="panel">${renderText(T.resume, V)}</div><button class="btn center" type="button" data-next>繼續作答</button><p class="muted center-text"><button class="linkbtn" type="button" data-restart>不是你開始的作答？從頭開始</button></p></div>`
 };
 /* 背景問卷一題的作答欄：複選題的勾選框不設 name，選到的值以「、」串起來放在同名的隱藏欄位 */
 function bgInput(q, cfg) {

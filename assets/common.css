@@ -10,6 +10,8 @@
   color-scheme:only light; /* same colors in dark mode / incognito: inputs, scrollbars stay light too */
 }
 *{box-sizing:border-box}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.center-text{text-align:center}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.7;
