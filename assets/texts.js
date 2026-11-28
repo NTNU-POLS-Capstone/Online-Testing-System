@@ -65,6 +65,7 @@ const TEXT_PAGES = [
 `## 作答時間到
 {{TIME_LIMIT}} 分鐘的作答時間已經用完，這個題組的作答到此為止，已作答的內容都會保存。接下來請評定剛才這個題組花了多少心力，然後回答最後幾個問題。` }] },
   { page: "effort", name: "心力評定", fields: [
+    { key: "effort_hint", label: "題目上方的提示", rows: 1, def: "請針對剛才整個題組的作答評分。" },
     { key: "effort_question", label: "題目", rows: 2, def: "我覺得我需要耗費多少心力回答剛剛的測驗問題？" }] },
   { page: "post", name: "回饋問卷", fields: [
     { key: "post_title", label: "標題與說明", rows: 3, def:
@@ -154,6 +155,7 @@ const PAGE_HTML = {
   time_up: (T, V) => `<div class="stack"><div class="panel">${renderText(T.time_up, V)}</div><button class="btn center" type="button" data-next>下一步</button></div>`,
   effort: (T, V) => `<form class="stack"><div class="panel">
       ${V.LABEL ? `<p class="muted">${esc(V.LABEL)}</p>` : ""}
+      ${T.effort_hint ? `<p class="effort-hint">${renderTextInline(T.effort_hint, V)}</p>` : ""}
       <h2>${renderTextInline(T.effort_question, V)}</h2>
       <div class="scale" role="radiogroup" aria-label="心力耗費，1到9分">
         ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => `<label><input type="radio" name="effort" value="${v}" required>${v}</label>`).join("")}
