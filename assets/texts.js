@@ -1,6 +1,6 @@
 /* 受試者各頁的文字：這裡是預設值，管理者頁「頁面文字」修改後存在試算表的 Texts 工作表，優先使用。
    格式見 render.js 的 renderText：空一行分段、「## 」小標題、「- 」條列、**粗體**、__底線__、{{變數}}。
-   可用變數：{{YEARS}}（如 114或115）、{{SET_MINUTES}}、{{N_SETS}}、{{N}}（未作答題數，只用在完成題組的確認視窗） */
+   可用變數：{{YEARS}}（如 114或115）、{{SET_MINUTES}}、{{TIME_LIMIT}}（作答時間上限，分鐘）、{{N_SETS}}、{{N}}（未作答題數，只用在完成題組的確認視窗） */
 const TEXT_PAGES = [
   { page: "device", name: "裝置檢查（不符合時）", fields: [
     { key: "device_block", label: "說明", rows: 5, def:
@@ -48,7 +48,7 @@ const TEXT_PAGES = [
 - 每個題組有一篇文章與數道單選題。**文章和題幹可以畫重點：按住滑鼠拖曳選取文字，放開後就會標上螢光；切換到「橡皮擦」再拖曳一次即可擦掉。**
 - 同一個題組內可以自由作答與改答；再點一次已選的選項可以取消選取。不確定答案的題目可以留空。
 - 作答完一個題組，按「完成這個題組」並確認後，會請你評定剛才花了多少心力（1 到 9 分），接著進入下一個題組。**完成後不能再回到前面的題組。**
-- 每個題組建議作答約 {{SET_MINUTES}} 分鐘。畫面左上角會顯示已用時間，評定心力時暫停計時。
+- 正式題組的作答時間共 **{{TIME_LIMIT}} 分鐘**，每個題組建議作答約 {{SET_MINUTES}} 分鐘。畫面左上角會顯示剩餘時間，評定心力時暫停計時。時間到時，正在作答的題組會自動結束（已作答的內容會保留），之後的題組就不再作答。
 - 正式作答前有一個練習題組，用來熟悉畫重點與心力評分，不計分。
 - 按下「開始」後畫面會切換為全螢幕。請盡量不要退出全螢幕或切換到其他視窗；作答期間請勿重新整理或關閉頁面。` }] },
   { page: "practice", name: "練習題組", fields: [
@@ -57,10 +57,13 @@ const TEXT_PAGES = [
 接下來是一個練習題組，請試著畫重點、作答，最後評定心力。練習不計分，作答內容不會被記錄。` },
     { key: "practice_done", label: "練習結束後的說明", rows: 4, def:
 `## 練習結束
-接下來是正式題組，共 {{N_SETS}} 個。每個題組完成後不能返回，請依自己的步調作答。` }] },
+接下來是正式題組，共 {{N_SETS}} 個，作答時間共 {{TIME_LIMIT}} 分鐘，按下「開始正式作答」後開始計時。每個題組完成後不能返回，請依自己的步調作答。` }] },
   { page: "confirm", name: "完成題組的確認視窗", fields: [
     { key: "confirm_blank", label: "還有題目未作答時", rows: 2, def: "還有 {{N}} 題未作答。完成這個題組後就不能再返回，確定要完成嗎？" },
-    { key: "confirm_all", label: "全部都已作答時", rows: 2, def: "完成這個題組後就不能再返回，確定要完成嗎？" }] },
+    { key: "confirm_all", label: "全部都已作答時", rows: 2, def: "完成這個題組後就不能再返回，確定要完成嗎？" },
+    { key: "time_up", label: "作答時間到時（接著評定心力）", rows: 3, def:
+`## 作答時間到
+{{TIME_LIMIT}} 分鐘的作答時間已經用完，這個題組的作答到此為止，已作答的內容都會保存。接下來請評定剛才這個題組花了多少心力，然後回答最後幾個問題。` }] },
   { page: "effort", name: "心力評定", fields: [
     { key: "effort_question", label: "題目", rows: 2, def: "我覺得我需要耗費多少心力回答剛剛的測驗問題？" }] },
   { page: "post", name: "回饋問卷", fields: [
@@ -118,7 +121,7 @@ function bgQuestions(T) {
 }
 const textVars = (cfg, extra = {}) => {
   const ys = (cfg.ITEM_YEARS || []).map(String);
-  return { YEARS: ys.length > 1 ? ys.slice(0, -1).join("、") + "或" + ys[ys.length - 1] : ys.join(""), SET_MINUTES: cfg.SET_MINUTES_HINT || "8–10", MIN_WIDTH: cfg.MIN_WIDTH || 900, ...extra };
+  return { YEARS: ys.length > 1 ? ys.slice(0, -1).join("、") + "或" + ys[ys.length - 1] : ys.join(""), SET_MINUTES: cfg.SET_MINUTES_HINT || "8–10", TIME_LIMIT: String(Number(cfg.TIME_LIMIT_MIN) || ""), MIN_WIDTH: cfg.MIN_WIDTH || 900, ...extra };
 };
 
 /* 背景問卷選項：學測年度依 ITEM_YEARS 往前推 5 年 */
@@ -148,6 +151,7 @@ const PAGE_HTML = {
       <p id="cfmText">${renderTextInline(V.N ? T.confirm_blank : T.confirm_all, V)}</p>
       <div class="actions end"><button class="btn ghost" type="button" data-cancel>返回作答</button><button class="btn" type="button" data-ok>確定完成</button></div>
     </div></div>`,
+  time_up: (T, V) => `<div class="stack"><div class="panel">${renderText(T.time_up, V)}</div><button class="btn center" type="button" data-next>下一步</button></div>`,
   effort: (T, V) => `<form class="stack"><div class="panel">
       ${V.LABEL ? `<p class="muted">${esc(V.LABEL)}</p>` : ""}
       <h2>${renderTextInline(T.effort_question, V)}</h2>

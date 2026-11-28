@@ -145,17 +145,27 @@
   fsbar.addEventListener("click", goFullscreen);
   const updateFsBar = () => { fsbar.hidden = !(testing() && document.fullscreenEnabled && !document.fullscreenElement); };
 
-  /* ---------- 左上角已用時間：正式題組的累計作答時間（評定心力時暫停，練習不計）---------- */
+  /* ---------- 左上角計時：正式題組的累計作答時間（評定心力時暫停，練習不計）----------
+     TIME_LIMIT_MIN > 0 時倒數剩餘時間；用完時正在作答的題組自動結束（visits 記 via: "timeout"），
+     評定這個題組的心力後直接進入回饋問卷，後面的題組不作答。
+     只計算題組頁開著的時間（確認視窗、切到其他視窗都算）；關掉頁面的時間計不到，會記在離開紀錄裡 */
+  const LIMIT_MS = Math.max(0, Number(CFG.TIME_LIMIT_MIN) || 0) * 60000;
   const timer = document.getElementById("timer");
   const fmt = ms => { const t = Math.floor(ms / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+  const usedMs = () => store.reduce((a, s) => a + s.activeMs, 0) + (visit && !visit.practice ? performance.now() - visit.start : 0);
+  const timeLeft = () => LIMIT_MS - usedMs();
   const tick = () => {
+    if (LIMIT_MS && visit && visit.timeUp && timeLeft() <= 0) visit.timeUp();
     const on = CFG.SHOW_TIMER && S && ["set", "effort"].includes(S.stage);
     timer.hidden = !on;
     if (!on) return;
-    const ms = store.reduce((a, s) => a + s.activeMs, 0) + (visit && !visit.practice ? performance.now() - visit.start : 0);
-    timer.textContent = `已用時間 ${fmt(ms)}`;
+    if (LIMIT_MS) {
+      const left = Math.max(0, timeLeft());
+      timer.textContent = `剩餘時間 ${fmt(left + 999)}`;         // 無條件進位到秒：剛開始顯示 60:00，最後一秒顯示 0:01
+      timer.classList.toggle("low", left < 5 * 60000);
+    } else timer.textContent = `已用時間 ${fmt(usedMs())}`;
   };
-  setInterval(tick, 500);
+  setInterval(tick, 250);
 
   /* ---------- 上方進度圓圈（只顯示進度，不能點）---------- */
   const stepsEl = document.getElementById("steps");
@@ -296,30 +306,35 @@
         update();
         if (isFormal) saveState();
       });
+      // 結束這個題組：via 是 "done"（按完成並確認）或 "timeout"（作答時間用完）
+      let holder = null;
+      const close = () => { if (holder) { holder.remove(); holder = null; } };
+      const finishSet = via => {
+        close();
+        if (isFormal) {
+          leaveEnd(); away.active = false;
+          const end = performance.now();
+          s.activeMs += end - start;
+          s.visits.push({ start_ms: Math.round(S.visit.wall - S.examStartWall), duration_ms: Math.round(end - start), via });
+          s.fsExits = away.fsExits;
+          s.runs = st.runs;
+          s.firstRtMs = Math.round(s.activeMs);        // 完成題組（評定心力前）的累計時間
+          S.visit = null; S.openLeave = null;
+        }
+        visit = null;
+        resolve();
+      };
+      if (isFormal && LIMIT_MS) visit.timeUp = () => { S.timedOut = true; finishSet("timeout"); };
       app.querySelector("[data-done]").addEventListener("click", () => {
         // 頁面內的確認視窗（不用瀏覽器的 confirm）；開著的時間仍算在這個題組
-        const holder = document.createElement("div");
+        close();
+        holder = document.createElement("div");
         holder.innerHTML = PAGE_HTML.confirm(T, { ...V, N: set.items.length - nAns() });
         document.body.appendChild(holder);
         holder.querySelector("[data-cancel]").focus();     // 預設在「返回作答」：習慣按 Enter 也不會直接完成
-        const close = () => holder.remove();
         holder.querySelector("[data-cancel]").addEventListener("click", close);
         holder.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
-        holder.querySelector("[data-ok]").addEventListener("click", () => {
-          close();
-          if (isFormal) {
-            leaveEnd(); away.active = false;
-            const end = performance.now();
-            s.activeMs += end - start;
-            s.visits.push({ start_ms: Math.round(S.visit.wall - S.examStartWall), duration_ms: Math.round(end - start), via: "done" });
-            s.fsExits = away.fsExits;
-            s.runs = st.runs;
-            s.firstRtMs = Math.round(s.activeMs);        // 完成題組（評定心力前）的累計時間
-            S.visit = null; S.openLeave = null;
-          }
-          visit = null;
-          resolve();
-        });
+        holder.querySelector("[data-ok]").addEventListener("click", () => finishSet("done"));
       });
     });
   }
@@ -373,13 +388,16 @@
       const i = S.cur, s = store[i], set = sets[i];
       drawSteps();
       if (S.stage === "set") {
+        if (LIMIT_MS && timeLeft() <= 0) { S.timedOut = true; break; }   // 時間已經用完（例如上一題組剛好用完）
         await setPage(set, { i, startNo: startNoFor(set, sets) });
         S.stage = "effort"; saveState(); drawSteps();
+        if (S.timedOut) { show(PAGE_HTML.time_up(T, V)); await nextClick("[data-next]"); }
       }
       const { effort, rt } = await effortPage("");
       s.effort = effort; s.effortRtMs = rt;
       upload(i);
-      S.cur = i + 1; S.stage = S.cur < sets.length ? "set" : "post"; saveState();
+      // 時間到：評完這個題組的心力就結束正式作答，後面的題組不作答（沒有作答紀錄）
+      S.cur = S.timedOut ? sets.length : i + 1; S.stage = S.cur < sets.length ? "set" : "post"; saveState();
     }
     S.stage = "post"; saveState();
   }

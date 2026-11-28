@@ -538,7 +538,8 @@ function analyse() {
       fsExits: rs.reduce((a, r) => a + (Number(r.n_fullscreen_exits) || 0), 0),
       score: rs.reduce((a, r) => a + (Number(r.n_correct) || 0), 0),
       nItems: rs.reduce((a, r) => a + (Number(r.n_items) || 0), 0),
-      setMs: rs.reduce((a, r) => a + (Number(r.rt_ms) || 0), 0)
+      setMs: rs.reduce((a, r) => a + (Number(r.rt_ms) || 0), 0),
+      timedOut: rs.some(r => (Array.isArray(r.visits) ? r.visits : []).some(v => v && v.via === "timeout"))   // 作答時間用完
     };
   });
   const included = people.filter(p => p.status === "completed" && !p.reasons.length);
@@ -623,7 +624,7 @@ function renderData() {
       <div class="tablebox"><table>
         <thead><tr><th>編碼</th><th>題本</th><th>狀態</th><th>開始時間</th><th>得分</th><th>題組作答（秒）</th><th>離開次數</th><th>離開（秒）</th><th>退出全螢幕</th><th>複製嘗試</th><th>看過試題</th><th>排除原因</th></tr></thead>
         <tbody>${A.people.map(p => `<tr${p.reasons.length ? ' class="excluded"' : ""}><td style="font-family:var(--f-num)">${esc(p.pid)}</td><td>${esc(p.booklet)}</td>
-          <td><span class="pill ${p.status === "completed" ? "ok" : "wip"}">${p.status === "completed" ? "已完成" : "未完成"}</span></td><td>${fmtTime(p.started_at)}</td>
+          <td><span class="pill ${p.status === "completed" ? "ok" : "wip"}">${p.status === "completed" ? "已完成" : "未完成"}</span>${p.timedOut ? ' <span class="pill wip">時間到</span>' : ""}</td><td>${fmtTime(p.started_at)}</td>
           <td class="n">${p.score} / ${p.nItems}</td><td class="n">${sec(p.setMs)}</td><td class="n">${p.nLeaves}</td><td class="n">${sec(p.leaveMs)}</td><td class="n">${p.fsExits}</td>
           <td class="n">${p.copy_attempts ?? "—"}</td><td>${esc(p.seen_items || "—")}</td><td>${p.reasons.map(esc).join("、") || "—"}</td></tr>`).join("") || `<tr><td colspan="12" class="muted">還沒有受試者。把受試者版的連結發出去後，資料會出現在這裡。</td></tr>`}</tbody>
       </table></div>
@@ -654,9 +655,9 @@ function renderData() {
   A.people.forEach(p => Object.keys(p.bg_extra || {}).forEach(id => { if (!extraQs.some(q => q.id === id)) extraQs.push({ id, label: id }); }));
   $("#csvPeople").addEventListener("click", () => download("受試者.csv",
     [["受試者", "題本", "狀態", "開始時間", "完成時間", "總時間毫秒", "得分", "題數", "學測年度", "重考", "看過試題", "國文家教", "國文級距", "年級", "中文母語", ...extraQs.map(q => plain(q.label)),
-      "離開次數", "離開毫秒", "退出全螢幕", "複製嘗試", "重新整理次數", "獨立作答自評", "作答時間是否足夠", "是否想回到前面", "操作不清楚之處", "其他意見", "排除原因", "未能儲存的資料", "裝置", "螢幕"],
+      "離開次數", "離開毫秒", "退出全螢幕", "複製嘗試", "重新整理次數", "作答時間到", "獨立作答自評", "作答時間是否足夠", "是否想回到前面", "操作不清楚之處", "其他意見", "排除原因", "未能儲存的資料", "裝置", "螢幕"],
      ...A.people.map(p => [p.pid, p.booklet, p.status, p.started_at, p.completed_at, p.total_ms, p.score, p.nItems, p.exam_year, p.retake, p.seen_items, p.tutor, p.zh_level, p.grade, p.native_zh, ...extraQs.map(q => (p.bg_extra || {})[q.id] ?? ""),
-      p.nLeaves, p.leaveMs, p.fsExits, p.copy_attempts, p.n_reloads, p.honest, p.fb_time, p.fb_return, p.fb_unclear, p.fb_other, p.reasons.join("、"), p.save_failed || "", p.user_agent, p.screen])]));
+      p.nLeaves, p.leaveMs, p.fsExits, p.copy_attempts, p.n_reloads, p.timedOut ? "是" : "", p.honest, p.fb_time, p.fb_return, p.fb_unclear, p.fb_other, p.reasons.join("、"), p.save_failed || "", p.user_agent, p.screen])]));
   const rd = $("#resetDemo");
   if (rd) rd.addEventListener("click", () => {
     if (rd.dataset.confirm !== "1") { rd.dataset.confirm = "1"; rd.textContent = "確定清除？再按一次"; return; }
@@ -779,7 +780,7 @@ function textPreview(page) {
     background: () => PAGE_HTML.background(T, V, APP_CONFIG),
     instructions: () => PAGE_HTML.instructions(T, V),
     practice: () => PAGE_HTML.practice_intro(T, V) + "<hr>" + PAGE_HTML.practice_done(T, V),
-    confirm: () => `<div class="modal-box" style="margin:0 auto"><p>${renderTextInline(T.confirm_blank, V)}</p><p class="muted">（以上為還有 2 題未作答時）</p><hr><p>${renderTextInline(T.confirm_all, V)}</p></div>`,
+    confirm: () => `<div class="modal-box" style="margin:0 auto"><p>${renderTextInline(T.confirm_blank, V)}</p><p class="muted">（以上為還有 2 題未作答時）</p><hr><p>${renderTextInline(T.confirm_all, V)}</p></div><hr>` + PAGE_HTML.time_up(T, V),
     effort: () => PAGE_HTML.effort(T, V),
     post: () => PAGE_HTML.post(T, V),
     complete: () => PAGE_HTML.complete(T, V, APP_CONFIG),

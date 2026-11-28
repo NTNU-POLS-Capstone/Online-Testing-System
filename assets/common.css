@@ -71,6 +71,7 @@ mark.todo{background:var(--flag-soft);color:var(--warn);border-radius:3px;paddin
 /* 左上角已用時間（不要太醒目）、退出全螢幕的提示列 */
 .timer{position:fixed;top:6px;left:10px;z-index:30;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;
   background:color-mix(in srgb,var(--bg) 85%,transparent);border-radius:4px;padding:1px 6px;pointer-events:none}
+.timer.low{color:var(--bad);font-weight:700}      /* 剩不到 5 分鐘 */
 .fsbar{position:fixed;top:0;left:0;right:0;z-index:40;font:inherit;font-size:.9rem;font-weight:500;border:0;cursor:pointer;
   background:var(--flag);color:var(--flag-ink);padding:8px 16px;text-align:center}
 
